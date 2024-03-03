@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace 'com.noti.plugin.telephony'
+    namespace 'com.noti.plugin.filer'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.noti.plugin.telephony"
+        applicationId "com.noti.plugin.filer"
         minSdk 21
         targetSdk 34
-        versionCode 1010007
-        versionName "1.0.7"
+        versionCode 1010000
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,8 +34,8 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'com.github.choiman1559:NotiSender-PluginLibrary:1.0.6'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.github.choiman1559:NotiSender-PluginLibrary:63343c3119'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

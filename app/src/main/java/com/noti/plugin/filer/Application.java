@@ -1,10 +1,13 @@
-package com.noti.plugin.telephony;
+package com.noti.plugin.filer;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Environment;
+
+import androidx.core.content.ContextCompat;
 
 import com.noti.plugin.Plugin;
 
@@ -18,42 +21,39 @@ public class Application extends android.app.Application {
     public static void initPlugin(Context context) {
         Plugin plugin = Plugin.init(new PluginResponses());
 
-        plugin.setPluginDescription("Plugin for Receive call & message information");
+        plugin.setPluginDescription("Plugin for Implement Remote File Functions");
         plugin.setAppPackageName(context.getPackageName());
         plugin.setSettingClass(SettingActivity.class);
-        plugin.setPluginTitle("Telephony Plugin");
+        plugin.setPluginTitle("Remote File Plugin");
         plugin.setRequireSensitiveAPI(false);
+
+        try {
+            plugin.setPluginHostInject(FileListWorker.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         checkPermission(context);
     }
 
-    public static void checkPermission(Context context) {
-        Plugin.getInstance().setPluginReady(checkTelephonyPermission(context));
+    public static boolean checkPermission(Context context) {
+        boolean isPermissionReady = checkFilePermission(context);
+        Plugin.getInstance().setPluginReady(isPermissionReady);
+        return isPermissionReady;
     }
 
-    public static boolean checkTelephonyPermission(Context context) {
-        boolean isPermissionGranted = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            String[] permissions = new String[]{
-                    Manifest.permission.SEND_SMS,
-                    Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.READ_CALL_LOG,
-                    Manifest.permission.READ_CONTACTS,
-                    Manifest.permission.READ_PHONE_STATE
-            };
-
-            for(String permission : permissions) {
-                if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                    isPermissionGranted = false;
-                }
-            }
+    public static boolean checkFilePermission(Context context) {
+        boolean isPermissionGranted = false;
+        if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+            isPermissionGranted = true;
+        } else if (Build.VERSION.SDK_INT > 28 &&
+                (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                        || ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED)) {
+            isPermissionGranted = true;
+        } else if (Build.VERSION.SDK_INT <= 28) {
+            isPermissionGranted = true;
         }
 
         return isPermissionGranted;
-    }
-
-    public static SharedPreferences getSharedPreferences(Context context) {
-        return context.getSharedPreferences(context.getPackageName() + "_preferences", MODE_PRIVATE);
     }
 }

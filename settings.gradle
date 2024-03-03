@@ -14,5 +14,5 @@ dependencyResolutionManagement {
         maven { url 'https://jitpack.io' }
     }
 }
-rootProject.name = "NotiSender Telephony Plugin"
+rootProject.name = "NotiSender ReFiler Plugin"
 include ':app'

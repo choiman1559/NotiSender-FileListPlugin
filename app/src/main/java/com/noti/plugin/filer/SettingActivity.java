@@ -1,107 +1,55 @@
-package com.noti.plugin.telephony;
+package com.noti.plugin.filer;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.SharedPreferences;
-import android.database.Cursor;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
+import android.os.Environment;
+import android.provider.Settings;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.switchmaterial.SwitchMaterial;
 
 public class SettingActivity extends AppCompatActivity {
 
-    MaterialButton Permit_Sms;
-    MaterialButton Test_RCS;
+    MaterialButton Permit_File;
 
-    ActivityResultLauncher<String[]> startPermissionPermit = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-        for(Boolean isGranted : result.values()) {
-            if(!isGranted) {
-                MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
-                builder
-                        .setTitle("Warning")
-                        .setMessage("Unable to obtain permission: Please allow permission and try again.")
-                        .setCancelable(false)
-                        .setPositiveButton("Close", (dialog, which) -> this.finish())
-                        .create()
-                        .show();
-                return;
-            }
+    ActivityResultLauncher<Intent> startAllFilesPermit = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+            setButtonCompleted(Permit_File);
         }
-
-        setButtonCompleted(Permit_Sms);
-        Application.checkPermission(SettingActivity.this);
     });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+        boolean isPermissionReady = Application.checkPermission(this);
 
-        Application.checkPermission(this);
-        SharedPreferences prefs = Application.getSharedPreferences(this);
-
-        Permit_Sms = findViewById(R.id.Permit_Sms);
-        Permit_Sms.setOnClickListener(v -> {
-            String[] permissions = new String[]{
-                    android.Manifest.permission.SEND_SMS,
-                    android.Manifest.permission.READ_SMS,
-                    android.Manifest.permission.RECEIVE_SMS,
-                    android.Manifest.permission.READ_CALL_LOG,
-                    Manifest.permission.READ_CONTACTS,
-                    Manifest.permission.READ_PHONE_STATE
-            };
-
-            startPermissionPermit.launch(permissions);
-        });
-
-        Test_RCS = findViewById(R.id.Test_RCS);
-        Test_RCS.setVisibility(BuildConfig.DEBUG ? View.VISIBLE : View.GONE);
-        Test_RCS.setOnClickListener(v -> {
-            Uri uri = Uri.parse("content://im/chat");
-            Cursor cursor = getContentResolver().query(uri ,null, null, null, null);
-            if(cursor != null){
-                int columnCount = cursor.getColumnCount();
-                if (cursor.moveToLast()) {
-                    for(int i = 0; i < columnCount; i++) {
-                        Log.e("__T", "[" + i + "=" + cursor.getColumnName(i) + "] " + cursor.getString(i));
-                    }
-                }
-                cursor.close();
+        Permit_File = findViewById(R.id.Permit_File);
+        Permit_File.setOnClickListener(v -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri);
+                startAllFilesPermit.launch(intent);
+            } else if (Build.VERSION.SDK_INT > 28) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 101);
             }
         });
 
-        if(Application.checkTelephonyPermission(this)) {
-            setButtonCompleted(Permit_Sms);
+        if(isPermissionReady) {
+            setButtonCompleted(Permit_File);
         }
-
-        SwitchMaterial callReceiveEnabled = findViewById(R.id.callReceiveEnabled);
-        SwitchMaterial messageReceiveEnabled = findViewById(R.id.messageReceiveEnabled);
-
-        callReceiveEnabled.setChecked(prefs.getBoolean("callReceiveEnabled", false));
-        messageReceiveEnabled.setChecked(prefs.getBoolean("messageReceiveEnabled", false));
-
-        callReceiveEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putBoolean("callReceiveEnabled", isChecked);
-            editor.apply();
-        });
-
-        messageReceiveEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putBoolean("messageReceiveEnabled", isChecked);
-            editor.apply();
-        });
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener((v) -> this.finish());
@@ -112,5 +60,15 @@ public class SettingActivity extends AppCompatActivity {
         button.setEnabled(false);
         button.setText("Sms Access Permitted");
         button.setIcon(AppCompatResources.getDrawable(SettingActivity.this, R.drawable.baseline_check_24));
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        for (int foo : grantResults) {
+            if (requestCode == 101 && foo == PackageManager.PERMISSION_GRANTED) {
+                setButtonCompleted(Permit_File);
+            }
+        }
     }
 }
