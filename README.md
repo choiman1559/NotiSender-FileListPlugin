@@ -1,2 +1,2 @@
-# NotiSender-TelephonyPlugin
-Plugin for Text message / Call reception in NotiSender
+# NotiSender-Remote File Plugin
+Plugin for remote file management
