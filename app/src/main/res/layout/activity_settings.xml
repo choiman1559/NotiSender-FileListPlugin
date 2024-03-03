@@ -74,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="start"
                     android:layout_marginVertical="24dp"
-                    android:text="Stub!"/>
+                    android:text="This plug-in is for activating NotiSender's Remote File Explorer function.\n\nTo use it, activate this plugin in the &quot;Plugin &amp; User Scripts&quot; menu, then click the settings button to the right of this device's name in &quot;Connected Devices&quot; on another device, and then click &quot;Remote File Explorer&quot; to run this function."/>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </com.google.android.material.appbar.AppBarLayout>
