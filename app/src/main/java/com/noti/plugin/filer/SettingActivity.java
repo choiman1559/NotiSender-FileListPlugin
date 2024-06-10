@@ -58,7 +58,7 @@ public class SettingActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     void setButtonCompleted(MaterialButton button) {
         button.setEnabled(false);
-        button.setText("Sms Access Permitted");
+        button.setText("File Access Permitted");
         button.setIcon(AppCompatResources.getDrawable(SettingActivity.this, R.drawable.baseline_check_24));
     }
 

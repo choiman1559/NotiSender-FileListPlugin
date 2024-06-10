@@ -33,22 +33,32 @@ import java.util.Map;
 public class FileListWorker extends PluginHostInject {
 
     public static final String IPC_SOCKET_PREFIX = "ReFileIPC_%d";
+    public static final String ACTION_RESPONSE_FILE_QUERY_READY = "response_file_query_ready";
     public static final String ACTION_REQUEST_FILE_LIST = "request_file_list";
     public static final String ACTION_RESPONSE_FILE_LIST = "response_file_list";
     public static final String ACTION_REQUEST_UPLOAD = "request_file_upload";
     public static final String ACTION_RESPONSE_UPLOAD = "response_file_upload";
     public static final String ACTION_REQUEST_METADATA = "request_file_metadata";
     public static final String ACTION_RESPONSE_METADATA = "response_file_metadata";
+    public static final String ACTION_RESPONSE_ERROR = "response_error";
 
     @Override
     public void onHostInject(Context context, @NonNull String dataType, @Nullable String deviceInfo, @Nullable String arg) {
         super.onHostInject(context, dataType, deviceInfo, arg);
-        Log.d("ddd", dataType);
+        if(BuildConfig.DEBUG)
+            Log.d("received_task", dataType);
+
         switch (dataType) {
             case ACTION_REQUEST_FILE_LIST:
                 if (deviceInfo != null && arg != null) {
+                    PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_FILE_QUERY_READY, Boolean.toString(Application.checkFilePermission(context)));
                     String[] args = arg.split("\\|");
-                    runFileListWork(context, deviceInfo, Integer.parseInt(args[0]), args[1].equals("true"));
+
+                    if (args.length >= 3) {
+                        runFileListWork(context, deviceInfo, args[2], Integer.parseInt(args[0]), args[1].equals("true"));
+                    } else {
+                        runFileListWork(context, deviceInfo, null, Integer.parseInt(args[0]), args[1].equals("true"));
+                    }
                 }
                 break;
 
@@ -67,12 +77,18 @@ public class FileListWorker extends PluginHostInject {
         }
     }
 
-    public void runFileListWork(Context context, @Nullable String deviceInfo, int indexMaximumSize, boolean indexHiddenFiles) {
+    public void runFileListWork(Context context, @Nullable String deviceInfo, @Nullable String basePath, int indexMaximumSize, boolean indexHiddenFiles) {
         String internalPath = Environment.getExternalStorageDirectory().getAbsolutePath();
-        File[] allExternalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
         Map<String, Object> drives = new HashMap<>();
+        File[] allExternalFilesDirs;
 
-        for (File filesDir : allExternalFilesDirs) {
+        if (basePath == null) {
+            allExternalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
+        } else {
+            allExternalFilesDirs = new File(basePath).listFiles();
+        }
+
+        if (allExternalFilesDirs != null) for (File filesDir : allExternalFilesDirs) {
             if (filesDir != null) {
                 int nameSubPos = filesDir.getAbsolutePath().lastIndexOf("/Android/data");
                 if (nameSubPos > 0) {
@@ -87,6 +103,8 @@ public class FileListWorker extends PluginHostInject {
                     }
                 }
             }
+        } else {
+            PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_ERROR, String.format("Base file folder is not available: %s", basePath));
         }
 
         drives.put(ReFileConst.DATA_TYPE_LAST_MODIFIED, Calendar.getInstance().getTimeInMillis());
@@ -106,6 +124,7 @@ public class FileListWorker extends PluginHostInject {
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_ERROR, String.format("Exception while opening IPC socket %s", e));
             }
         }).start();
         PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_FILE_LIST, ipcChannelName);

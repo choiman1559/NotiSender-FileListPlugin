@@ -1,11 +1,6 @@
 package com.noti.plugin.filer;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Looper;
-import android.telephony.SmsManager;
-import android.widget.Toast;
 
 import com.noti.plugin.data.NotificationData;
 import com.noti.plugin.data.PairDeviceInfo;
