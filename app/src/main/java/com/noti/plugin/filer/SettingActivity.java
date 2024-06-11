@@ -42,6 +42,7 @@ public class SettingActivity extends AppCompatActivity {
         }
     });
 
+    @SuppressLint("BatteryLife")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

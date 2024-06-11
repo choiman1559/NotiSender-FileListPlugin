@@ -29,11 +29,15 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 public class FileListWorker extends PluginHostInject {
 
+    public static final boolean USE_CONTENT_PROVIDER_IPC = true;
+
     public static final String IPC_SOCKET_PREFIX = "ReFileIPC_%d";
+    public static final String IPC_PROVIDER_LIST_PREFIX = "LIST";
+    public static final String IPC_PROVIDER_DATA_PREFIX = "DATA";
+
     public static final String ACTION_RESPONSE_FILE_QUERY_READY = "response_file_query_ready";
     public static final String ACTION_REQUEST_FILE_LIST = "request_file_list";
     public static final String ACTION_RESPONSE_FILE_LIST = "response_file_list";
@@ -119,22 +123,31 @@ public class FileListWorker extends PluginHostInject {
         final String ipcChannelName = String.format(Locale.getDefault(), IPC_SOCKET_PREFIX, finalFileListString.hashCode());
 
         new Thread(() -> {
-            try (LocalServerSocket serverSocket = new LocalServerSocket(ipcChannelName)) {
-                while (true) {
-                    LocalSocket clientSocket = serverSocket.accept();
-                    if (clientSocket.isConnected()) {
-                        OutputStream outputStream = clientSocket.getOutputStream();
-                        outputStream.write(finalFileListString.getBytes());
-                        clientSocket.close();
-                        break;
+            if(USE_CONTENT_PROVIDER_IPC) {
+                String providerIPCChannelName = String.format(Locale.getDefault(), "%s_%s", IPC_PROVIDER_LIST_PREFIX, ipcChannelName);
+                ReFileStreamProvider.fileListMap.put(providerIPCChannelName, finalFileListString);
+                PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_FILE_LIST, providerIPCChannelName);
+            } else {
+                try (LocalServerSocket serverSocket = new LocalServerSocket(ipcChannelName)) {
+                    while (true) {
+                        LocalSocket clientSocket = serverSocket.accept();
+                        if (clientSocket.isConnected()) {
+                            OutputStream outputStream = clientSocket.getOutputStream();
+                            outputStream.write(finalFileListString.getBytes());
+                            clientSocket.close();
+                            break;
+                        }
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_ERROR, String.format("Exception while opening IPC socket %s", e));
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_ERROR, String.format("Exception while opening IPC socket %s", e));
             }
         }).start();
-        PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_FILE_LIST, ipcChannelName);
+
+        if(!USE_CONTENT_PROVIDER_IPC) {
+            PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_FILE_LIST, ipcChannelName);
+        }
     }
 
     public void runFileUploadWork(Context context, @Nullable String deviceInfo, String filePath) {
@@ -143,27 +156,37 @@ public class FileListWorker extends PluginHostInject {
 
         if (targetFile.exists() && targetFile.isFile() && targetFile.canRead()) {
             new Thread(() -> {
-                try (FileInputStream fileInputStream = new FileInputStream(targetFile);
-                     LocalServerSocket serverSocket = new LocalServerSocket(ipcChannelName)) {
-                    while (true) {
-                        LocalSocket clientSocket = serverSocket.accept();
-                        if (clientSocket.isConnected()) {
-                            OutputStream outputStream = clientSocket.getOutputStream();
-                            byte[] buf = new byte[8192];
-                            int length;
-                            while ((length = fileInputStream.read(buf)) != -1) {
-                                outputStream.write(buf, 0, length);
+                try {
+                    FileInputStream fileInputStream = new FileInputStream(targetFile);
+                    if(USE_CONTENT_PROVIDER_IPC) {
+                        String providerIPCChannelName = String.format(Locale.getDefault(), "%s_%s", IPC_PROVIDER_DATA_PREFIX, ipcChannelName);
+                        ReFileStreamProvider.inputStreamMap.put(providerIPCChannelName, fileInputStream);
+                        PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_UPLOAD, filePath + "|" + providerIPCChannelName);
+                        Log.d("DDD", "PluginAction.responseHostApiInject");
+                    } else try (LocalServerSocket serverSocket = new LocalServerSocket(ipcChannelName)) {
+                        while (true) {
+                            LocalSocket clientSocket = serverSocket.accept();
+                            if (clientSocket.isConnected()) {
+                                OutputStream outputStream = clientSocket.getOutputStream();
+                                byte[] buf = new byte[8192];
+                                int length;
+                                while ((length = fileInputStream.read(buf)) != -1) {
+                                    outputStream.write(buf, 0, length);
+                                }
+                                clientSocket.close();
+                                break;
                             }
-                            clientSocket.close();
-                            break;
                         }
                     }
-                } catch (Exception e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                     PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_UPLOAD, filePath + "|Error: " + e);
                 }
             }).start();
-            PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_UPLOAD, filePath + "|" + ipcChannelName);
+
+            if(!USE_CONTENT_PROVIDER_IPC) {
+                PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_UPLOAD, filePath + "|" + ipcChannelName);
+            }
         } else {
             PluginAction.responseHostApiInject(context, deviceInfo, ACTION_RESPONSE_UPLOAD, filePath + "|Error: File not exists or not readable!");
         }
