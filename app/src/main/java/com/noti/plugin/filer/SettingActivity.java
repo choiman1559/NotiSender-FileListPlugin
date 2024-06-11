@@ -23,10 +23,22 @@ import com.google.android.material.button.MaterialButton;
 public class SettingActivity extends AppCompatActivity {
 
     MaterialButton Permit_File;
+    MaterialButton Permit_Power_Save;
+
+    final String File_Complete_Message = "File Access Permitted";
+    final String Power_Complete_Message = "Power Access Permitted";
 
     ActivityResultLauncher<Intent> startAllFilesPermit = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
-            setButtonCompleted(Permit_File);
+            setButtonCompleted(Permit_File, File_Complete_Message);
+            Application.checkPermission(this);
+        }
+    });
+
+    ActivityResultLauncher<Intent> startBatteryOptimizations = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (Application.checkPowerPermission(SettingActivity.this)) {
+            setButtonCompleted(Permit_Power_Save, Power_Complete_Message);
+            Application.checkPermission(this);
         }
     });
 
@@ -34,9 +46,10 @@ public class SettingActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-        boolean isPermissionReady = Application.checkPermission(this);
 
         Permit_File = findViewById(R.id.Permit_File);
+        Permit_Power_Save = findViewById(R.id.Permit_Power_Save);
+
         Permit_File.setOnClickListener(v -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
@@ -47,18 +60,29 @@ public class SettingActivity extends AppCompatActivity {
             }
         });
 
-        if(isPermissionReady) {
-            setButtonCompleted(Permit_File);
+        Permit_Power_Save.setOnClickListener(v -> {
+            if (Build.VERSION.SDK_INT > 22)
+                startBatteryOptimizations.launch(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        .setData(Uri.parse("package:" + getPackageName())));
+        });
+
+        if(Application.checkFilePermission(this)) {
+            setButtonCompleted(Permit_File, File_Complete_Message);
         }
 
+        if(Application.checkPowerPermission(this)) {
+            setButtonCompleted(Permit_Power_Save, Power_Complete_Message);
+        }
+
+        Application.checkPermission(this);
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener((v) -> this.finish());
     }
 
     @SuppressLint("SetTextI18n")
-    void setButtonCompleted(MaterialButton button) {
+    void setButtonCompleted(MaterialButton button, String message) {
         button.setEnabled(false);
-        button.setText("File Access Permitted");
+        button.setText(message);
         button.setIcon(AppCompatResources.getDrawable(SettingActivity.this, R.drawable.baseline_check_24));
     }
 
@@ -67,7 +91,8 @@ public class SettingActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         for (int foo : grantResults) {
             if (requestCode == 101 && foo == PackageManager.PERMISSION_GRANTED) {
-                setButtonCompleted(Permit_File);
+                setButtonCompleted(Permit_File, File_Complete_Message);
+                Application.checkPermission(this);
             }
         }
     }

@@ -61,6 +61,19 @@
                     app:icon="@drawable/baseline_file_copy_24"
                     android:background="@drawable/round_corner"/>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/Permit_Power_Save"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Power Access permission"
+                    android:gravity="center"
+                    android:layout_gravity="center"
+                    android:layout_marginBottom="12dp"
+                    android:textColor="@color/ui_bg"
+                    app:iconTint="@color/ui_bg"
+                    app:icon="@drawable/baseline_battery_saver_24"
+                    android:background="@drawable/round_corner"/>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

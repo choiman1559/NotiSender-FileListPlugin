@@ -29,6 +29,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class FileListWorker extends PluginHostInject {
 
@@ -45,6 +46,12 @@ public class FileListWorker extends PluginHostInject {
     @Override
     public void onHostInject(Context context, @NonNull String dataType, @Nullable String deviceInfo, @Nullable String arg) {
         super.onHostInject(context, dataType, deviceInfo, arg);
+
+        PowerUtils powerUtils = PowerUtils.getInstance(context);
+        if(powerUtils != null) {
+            powerUtils.acquire();
+        }
+
         if(BuildConfig.DEBUG)
             Log.d("received_task", dataType);
 

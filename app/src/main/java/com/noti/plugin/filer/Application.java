@@ -2,10 +2,10 @@ package com.noti.plugin.filer;
 
 import android.Manifest;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
+import android.os.PowerManager;
 
 import androidx.core.content.ContextCompat;
 
@@ -37,9 +37,14 @@ public class Application extends android.app.Application {
     }
 
     public static boolean checkPermission(Context context) {
-        boolean isPermissionReady = checkFilePermission(context);
+        boolean isPermissionReady = checkFilePermission(context) && checkPowerPermission(context);
         Plugin.getInstance().setPluginReady(isPermissionReady);
         return isPermissionReady;
+    }
+
+    public static boolean checkPowerPermission(Context context) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return Build.VERSION.SDK_INT < 23 || pm.isIgnoringBatteryOptimizations(context.getPackageName());
     }
 
     public static boolean checkFilePermission(Context context) {
